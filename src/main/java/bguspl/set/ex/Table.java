@@ -32,6 +32,9 @@ public class Table implements TableContract{
     // tokens in slots. -1 no toke, otherwise gets id of player.
     protected int[] tokensInSlots;
 
+    // for each slot there is a lock so multiple players wont change the same slot conurrently.
+    public Object[] slotLocks;
+
     /**
      * Constructor for testing.
      *
@@ -47,6 +50,12 @@ public class Table implements TableContract{
         tokensInSlots = new int[env.config.tableSize];
         for(int i = 0; i < tokensInSlots.length; i++){
             tokensInSlots[i] = -1;
+        }
+        slotLocks = new Object[env.config.tableSize];
+        for(int i = 0; i < slotLocks.length; i++){
+            if(slotLocks[i] == null){
+                slotLocks[i] = new Object();
+            }
         }
     }
 
@@ -124,12 +133,11 @@ public class Table implements TableContract{
     public void placeToken(int player, int slot) {
         // TODO implement
 
-        //if slot already has a token, do nothing.
-        if(!checkSlotFree(slot)){
-            return;
+        //if slot doesn't already have a token, place one.
+        if(checkSlotFree(slot)){  
+            tokensInSlots[slot] = player;
         }
 
-        tokensInSlots[slot] = player;
     }
 
     /**

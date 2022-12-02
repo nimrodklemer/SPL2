@@ -58,7 +58,7 @@ public class Player implements Runnable, PlayerContract {
     // Quoue for key actions.
     private Queue<Integer> chosenSlots;
 
-    Object lockKeyPressed;
+
 
     /**
      * The class constructor.
@@ -75,7 +75,6 @@ public class Player implements Runnable, PlayerContract {
         this.id = id;
         this.human = human;
         chosenSlots = new LinkedList<Integer>();
-        lockKeyPressed = new Object();
     }
 
     /**
@@ -93,8 +92,9 @@ public class Player implements Runnable, PlayerContract {
             // wait for key press
             
             // wait for Object key of Player::keyPressed()
+            synchronized(lockKeyPressed){
 
-            //place or remove token from table
+            }
 
             //third token placed?
             // if yes - wait for point or penalty
@@ -142,24 +142,29 @@ public class Player implements Runnable, PlayerContract {
     public void keyPressed(int slot) {
         // TODO implement
 
-        //synchronized()
-
-        // if slot already in quoue remove it else add it
-        if(chosenSlots.contains(slot)){
-            //remove from the list.
-            chosenSlots.remove(slot);
-            //remove token from table.
-            table.removeToken(id, slot);
-        }
-        else{
-            //check if there's a player's token on the card.
-            if(table.checkSlotFree(slot)){
-                //add to the list.
-                chosenSlots.add(slot);
-                //add token to table.
-                table.placeToken(id, slot);
+        
+            // if slot already in quoue remove it else add it
+            if(chosenSlots.contains(slot)){
+                //remove from the list.
+                chosenSlots.remove(slot);
+                //remove token from table.
+                table.removeToken(id, slot);
             }
-        }
+            else{
+                // force the player to wait until other .
+                synchronized(slotLocks[slot]){
+                    //check if there's a player's token on the card.
+                    if(table.checkSlotFree(slot)){
+                        //add to the list.
+                        chosenSlots.add(slot);
+                        //add token to table.
+                        table.placeToken(id, slot);
+                    }
+                }
+            }
+        
+
+
     }
 
     /**
