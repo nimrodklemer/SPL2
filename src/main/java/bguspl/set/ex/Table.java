@@ -141,12 +141,12 @@ public class Table implements TableContract{
     public boolean removeToken(int player, int slot) {
         // TODO implement
 
-        if(tokensInSlots[slot] != player){
-            return false;
+        if(tokensInSlots[slot] == player){
+            tokensInSlots[slot] = -1;
+            return true;
         }
 
-        tokensInSlots[slot] = -1;
-        return true;
+        return false;
     }
 
 

@@ -152,8 +152,8 @@ public class Player implements Runnable, PlayerContract {
             table.removeToken(id, slot);
         }
         else{
-            //check if there's another player's token on the card.
-            if(){
+            //check if there's a player's token on the card.
+            if(table.checkSlotFree(slot)){
                 //add to the list.
                 chosenSlots.add(slot);
                 //add token to table.
