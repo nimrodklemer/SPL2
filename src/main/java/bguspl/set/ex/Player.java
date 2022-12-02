@@ -1,5 +1,9 @@
 package bguspl.set.ex;
 
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Stack;
+
 import bguspl.set.Env;
 
 /**
@@ -50,6 +54,12 @@ public class Player implements Runnable, PlayerContract {
      */
     private int score;
 
+
+    // Quoue for key actions.
+    private Queue<Integer> chosenSlots;
+
+    Object lockKeyPressed;
+
     /**
      * The class constructor.
      *
@@ -64,6 +74,8 @@ public class Player implements Runnable, PlayerContract {
         this.table = table;
         this.id = id;
         this.human = human;
+        chosenSlots = new LinkedList<Integer>();
+        lockKeyPressed = new Object();
     }
 
     /**
@@ -77,6 +89,17 @@ public class Player implements Runnable, PlayerContract {
 
         while (!terminate) {
             // TODO implement main player loop
+
+            // wait for key press
+            
+            // wait for Object key of Player::keyPressed()
+
+            //place or remove token from table
+
+            //third token placed?
+            // if yes - wait for point or penalty
+            // if not - continue loop
+
         }
         if (!human) try { aiThread.join(); } catch (InterruptedException ignored) {}
         System.out.printf("Info: Thread %s terminated.%n", Thread.currentThread().getName());
@@ -106,6 +129,9 @@ public class Player implements Runnable, PlayerContract {
      */
     public void terminate() {
         // TODO implement
+
+        // change terminate to true
+        terminate = true;
     }
 
     /**
@@ -115,6 +141,25 @@ public class Player implements Runnable, PlayerContract {
      */
     public void keyPressed(int slot) {
         // TODO implement
+
+        //synchronized()
+
+        // if slot already in quoue remove it else add it
+        if(chosenSlots.contains(slot)){
+            //remove from the list.
+            chosenSlots.remove(slot);
+            //remove token from table.
+            table.removeToken(id, slot);
+        }
+        else{
+            //check if there's another player's token on the card.
+            if(){
+                //add to the list.
+                chosenSlots.add(slot);
+                //add token to table.
+                table.placeToken(id, slot);
+            }
+        }
     }
 
     /**

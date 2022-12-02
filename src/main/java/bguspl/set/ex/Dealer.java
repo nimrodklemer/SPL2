@@ -79,6 +79,10 @@ public class Dealer implements Runnable {
      */
     public void terminate() {
         // TODO implement
+
+        // set terminate to true
+        terminate = true;
+
     }
 
     /**

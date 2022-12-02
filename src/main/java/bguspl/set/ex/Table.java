@@ -29,6 +29,9 @@ public class Table implements TableContract{
      */
     protected final Integer[] cardToSlot; // slot per card (if any)
 
+    // tokens in slots. -1 no toke, otherwise gets id of player.
+    protected int[] tokensInSlots;
+
     /**
      * Constructor for testing.
      *
@@ -41,6 +44,10 @@ public class Table implements TableContract{
         this.env = env;
         this.slotToCard = slotToCard;
         this.cardToSlot = cardToSlot;
+        tokensInSlots = new int[env.config.tableSize];
+        for(int i = 0; i < tokensInSlots.length; i++){
+            tokensInSlots[i] = -1;
+        }
     }
 
     /**
@@ -116,6 +123,13 @@ public class Table implements TableContract{
      */
     public void placeToken(int player, int slot) {
         // TODO implement
+
+        //if slot already has a token, do nothing.
+        if(!checkSlotFree(slot)){
+            return;
+        }
+
+        tokensInSlots[slot] = player;
     }
 
     /**
@@ -126,6 +140,22 @@ public class Table implements TableContract{
      */
     public boolean removeToken(int player, int slot) {
         // TODO implement
-        return false;
+
+        if(tokensInSlots[slot] != player){
+            return false;
+        }
+
+        tokensInSlots[slot] = -1;
+        return true;
+    }
+
+
+    /**
+     * Checks if a slot if free for token placement, or has a token already.
+     * @param slot - the slot to check if it is free to place a token.
+     * @return     - true if slot has no token on it.
+     */
+    public boolean checkSlotFree(int slot){
+        return tokensInSlots[slot] == -1;
     }
 }
