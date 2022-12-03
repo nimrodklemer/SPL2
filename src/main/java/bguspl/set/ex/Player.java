@@ -58,8 +58,9 @@ public class Player implements Runnable, PlayerContract {
     // Quoue for key actions.
     private Queue<Integer> chosenSlots;
 
+    private Dealer dealer;
 
-
+    
     /**
      * The class constructor.
      *
@@ -74,6 +75,7 @@ public class Player implements Runnable, PlayerContract {
         this.table = table;
         this.id = id;
         this.human = human;
+        this.dealer = dealer;
         chosenSlots = new LinkedList<Integer>();
     }
 
@@ -92,9 +94,23 @@ public class Player implements Runnable, PlayerContract {
             //if third token placed
             // if yes - wait for point or penalty
             if(chosenSlots.size() == 3){
-                //awaken the dealer
-                //give dealer set to check if legal
+                
+                int[] setAsArray = chosenSlots.stream().mapToInt(Integer::intValue).toArray();
+
+                dealer.submitSet(id, setAsArray);
+
+                synchronized(dealer.dealerInteruptLock){
+                    if(dealer.isSleeping()){
+                        //awaken the dealer 
+                        dealer.interruptDealer();
+                    }
+                }
+                
+                
+
+                // wait()
                 //wait for point/penalty from dealer
+                //
             }
 
             
@@ -177,6 +193,12 @@ public class Player implements Runnable, PlayerContract {
 
         int ignored = table.countCards(); // this part is just for demonstration in the unit tests
         env.ui.setScore(id, ++score);
+
+        //make player wait
+        try{
+            Thread.sleep(env.config.pointFreezeMillis);
+        } catch(InterruptedException ignored2){}
+        
     }
 
     /**
@@ -184,9 +206,20 @@ public class Player implements Runnable, PlayerContract {
      */
     public void penalty() {
         // TODO implement
-    }
+
+        //make player wait
+        try{
+            Thread.sleep(env.config.penaltyFreezeMillis);
+        } catch(InterruptedException ignored3){}    }
 
     public int getScore() {
         return score;
+    }
+
+    public Thread getThread(Object asker){
+        if(asker instanceof Dealer){
+            return playerThread;
+        }
+        return null;
     }
 }

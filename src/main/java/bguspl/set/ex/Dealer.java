@@ -42,6 +42,8 @@ public class Dealer implements Runnable {
     // submitted sets by players to dealer + first index is player's id.
     private Queue<int[]> sets;
 
+    private Thread dealerThread;
+
     public Dealer(Env env, Table table, Player[] players) {
         this.env = env;
         this.table = table;
@@ -54,6 +56,7 @@ public class Dealer implements Runnable {
      */
     @Override
     public void run() {
+        dealerThread = Thread.currentThread();
         System.out.printf("Info: Thread %s starting.%n", Thread.currentThread().getName());
         while (!shouldFinish()) {
             Collections.shuffle(deck);
@@ -191,6 +194,8 @@ public class Dealer implements Runnable {
 
         int playerId = setAndId[0];
         int[] set = new int[setAndId.length-1];
+        Thread playerThread = players[playerId].getThread(this);
+
 
         for(int c = 1; c < set.length; c++){
             set[c-1] = setAndId[c];
@@ -208,6 +213,30 @@ public class Dealer implements Runnable {
 
         }
 
+        while(playerThread.getState() != Thread.State.WAITING){}
+        notify();
         return legal;
+    }
+
+    public void interruptDealer(){
+        dealerThread.interrupt();
+    }
+
+    public void submitSet(int id, int[] set){
+        int len = set.length;
+
+        int[] setAndId = new int[len+1];
+
+        setAndId[0] = id;
+
+        for(int c = 1; c < len; c++){
+            setAndId[c] = set[c-1];
+        }
+
+        sets.add(setAndId);
+    }
+    
+    public boolean isSleeping(){
+        return dealerThread.getState() == Thread.State.TIMED_WAITING;
     }
 }
