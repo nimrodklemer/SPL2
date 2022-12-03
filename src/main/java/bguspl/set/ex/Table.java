@@ -3,6 +3,7 @@ package bguspl.set.ex;
 import bguspl.set.Env;
 
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -111,6 +112,7 @@ public class Table implements TableContract{
         slotToCard[slot] = card;
 
         // TODO implement
+        env.ui.placeCard(card, slot);
     }
 
     /**
@@ -123,6 +125,14 @@ public class Table implements TableContract{
         } catch (InterruptedException ignored) {}
 
         // TODO implement
+        env.ui.removeCard(slot);
+        int card = slotToCard[slot];
+        cardToSlot[card] = null;
+        slotToCard[slot] = null;
+        tokensInSlots[slot] = -1;
+
+        env.ui.removeCard(slot);
+        env.ui.removeTokens(slot);
     }
 
     /**
@@ -138,6 +148,7 @@ public class Table implements TableContract{
             tokensInSlots[slot] = player;
         }
 
+        env.ui.placeToken(player, slot);
     }
 
     /**
@@ -154,6 +165,8 @@ public class Table implements TableContract{
             return true;
         }
 
+        env.ui.removeToken(player, slot);
+
         return false;
     }
 
@@ -165,5 +178,21 @@ public class Table implements TableContract{
      */
     public boolean checkSlotFree(int slot){
         return tokensInSlots[slot] == -1;
+    }
+
+
+    public List<Integer> slotsMissingCards(){
+
+        List<Integer> newList = new LinkedList<Integer>();
+
+        int len = cardToSlot.length;
+
+        for(int c = 0; c < len; c++){
+            if(cardToSlot[c] == null){
+                newList.add(c);
+            }
+        }
+
+        return newList;
     }
 }

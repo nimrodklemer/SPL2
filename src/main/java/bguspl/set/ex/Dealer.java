@@ -4,6 +4,7 @@ import bguspl.set.Env;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Queue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -37,6 +38,9 @@ public class Dealer implements Runnable {
      * The time when the dealer countdown times out (at which point he must collect the cards and reshuffle the deck).
      */
     private long countdownUntil;
+
+    // submitted sets by players to dealer + first index is player's id.
+    private Queue<int[]> sets;
 
     public Dealer(Env env, Table table, Player[] players) {
         this.env = env;
@@ -98,6 +102,22 @@ public class Dealer implements Runnable {
      */
     private void removeCardsFromTable() {
         // TODO implement
+
+        // remove a set from the table.
+        int[] setAndId = sets.remove();
+        
+        
+        while(!sets.isEmpty()){
+            // checking if legal and also rewarding or penalizing.
+            if(handleSet(setAndId)){
+                // remove cards and tokens from table
+                //return cards to deck
+                for (int c = 1; c < setAndId.length; c++) {
+                    deck.add(table.slotToCard[setAndId[c]]);
+                    table.removeCard(setAndId[c]);
+                }
+            }
+        }
     }
 
     /**
@@ -105,6 +125,16 @@ public class Dealer implements Runnable {
      */
     private void placeCardsOnTable() {
         // TODO implement
+
+        int card;
+        // get list of the slots who miss a card
+        List<Integer> slotsMissingCards = table.slotsMissingCards();
+
+        while(slotsMissingCards.size() > 0){
+            // takes card from the deck and place it in the slot
+            card = deck.remove(0);
+            table.placeCard(card, slotsMissingCards.remove(0));
+        }
     }
 
     /**
@@ -112,6 +142,11 @@ public class Dealer implements Runnable {
      */
     private void sleepUntilWokenOrTimeout() {
         // TODO implement
+
+        //wait for sleep countdown or for player to send a set.
+        try {
+            Thread.sleep(env.config.turnTimeoutMillis);
+        } catch (InterruptedException ignored) {}
     }
 
     /**
@@ -136,6 +171,11 @@ public class Dealer implements Runnable {
      */
     private void removeAllCardsFromTable() {
         // TODO implement
+
+        for(int c = 0; c < env.config.tableSize; c++){
+            deck.add(table.slotToCard[c]);
+            table.removeCard(c);
+        }
     }
 
     /**
@@ -143,5 +183,33 @@ public class Dealer implements Runnable {
      */
     private void announceWinners() {
         // TODO implement
+    }
+
+    /**
+     * Check if a given set is legal and reward or penalize the player accordingly.
+     * @return true if legal set.
+     */
+    private boolean handleSet(int[] setAndId){
+
+        int playerId = setAndId[0];
+        int[] set = new int[setAndId.length-1];
+
+        for(int c = 1; c < set.length; c++){
+            set[c-1] = setAndId[c];
+        }
+
+        boolean legal = env.util.testSet(set);
+        
+        if(legal){
+            //reward player
+            players[playerId].point();
+        }
+        else{
+            //penalize player
+            players[playerId].penalty();
+
+        }
+
+        return legal;
     }
 }

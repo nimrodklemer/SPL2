@@ -89,16 +89,15 @@ public class Player implements Runnable, PlayerContract {
         while (!terminate) {
             // TODO implement main player loop
 
-            // wait for key press
-            
-            // wait for Object key of Player::keyPressed()
-            synchronized(lockKeyPressed){
-
+            //if third token placed
+            // if yes - wait for point or penalty
+            if(chosenSlots.size() == 3){
+                //awaken the dealer
+                //give dealer set to check if legal
+                //wait for point/penalty from dealer
             }
 
-            //third token placed?
-            // if yes - wait for point or penalty
-            // if not - continue loop
+            
 
         }
         if (!human) try { aiThread.join(); } catch (InterruptedException ignored) {}
@@ -142,6 +141,8 @@ public class Player implements Runnable, PlayerContract {
     public void keyPressed(int slot) {
         // TODO implement
 
+        //so player won't be able to remove or add more slots after making a set.
+        if(chosenSlots.size() < 3){
         
             // if slot already in quoue remove it else add it
             if(chosenSlots.contains(slot)){
@@ -152,7 +153,7 @@ public class Player implements Runnable, PlayerContract {
             }
             else{
                 // force the player to wait until other .
-                synchronized(slotLocks[slot]){
+                synchronized(table.slotLocks[slot]){
                     //check if there's a player's token on the card.
                     if(table.checkSlotFree(slot)){
                         //add to the list.
@@ -162,9 +163,7 @@ public class Player implements Runnable, PlayerContract {
                     }
                 }
             }
-        
-
-
+        }
     }
 
     /**
