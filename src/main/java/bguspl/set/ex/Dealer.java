@@ -111,9 +111,7 @@ public class Dealer implements Runnable {
             // checking if legal and also rewarding or penalizing.
             if(handleSet(setAndId)){
                 // remove cards and tokens from table
-                //return cards to deck
                 for (int c = 1; c < setAndId.length; c++) {
-                    deck.add(table.slotToCard[setAndId[c]]);
                     table.removeCard(setAndId[c]);
                 }
             }
@@ -130,7 +128,7 @@ public class Dealer implements Runnable {
         // get list of the slots who miss a card
         List<Integer> slotsMissingCards = table.slotsMissingCards();
 
-        while(slotsMissingCards.size() > 0){
+        while(deck.size() > 0 && slotsMissingCards.size() > 0){
             // takes card from the deck and place it in the slot
             card = deck.remove(0);
             table.placeCard(card, slotsMissingCards.remove(0));
