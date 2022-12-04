@@ -168,16 +168,10 @@ public class Player implements Runnable, PlayerContract {
                 table.removeToken(id, slot);
             }
             else{
-                // force the player to wait until other .
-                synchronized(table.slotLocks[slot]){
-                    //check if there's a player's token on the card.
-                    if(table.checkSlotFree(slot)){
-                        //add to the list.
-                        chosenSlots.add(slot);
-                        //add token to table.
-                        table.placeToken(id, slot);
-                    }
-                }
+                //add to the list.
+                chosenSlots.add(slot);
+                //add token to table.
+                table.placeToken(id, slot);
             }
         }
     }

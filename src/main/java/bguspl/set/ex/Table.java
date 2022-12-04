@@ -30,11 +30,6 @@ public class Table implements TableContract{
      */
     protected final Integer[] cardToSlot; // slot per card (if any)
 
-    // tokens in slots. -1 no toke, otherwise gets id of player.
-    protected int[] tokensInSlots;
-
-    // for each slot there is a lock so multiple players wont change the same slot conurrently.
-    public Object[] slotLocks;
 
     /**
      * Constructor for testing.
@@ -48,16 +43,6 @@ public class Table implements TableContract{
         this.env = env;
         this.slotToCard = slotToCard;
         this.cardToSlot = cardToSlot;
-        tokensInSlots = new int[env.config.tableSize];
-        for(int i = 0; i < tokensInSlots.length; i++){
-            tokensInSlots[i] = -1;
-        }
-        slotLocks = new Object[env.config.tableSize];
-        for(int i = 0; i < slotLocks.length; i++){
-            if(slotLocks[i] == null){
-                slotLocks[i] = new Object();
-            }
-        }
     }
 
     /**
@@ -129,7 +114,6 @@ public class Table implements TableContract{
         int card = slotToCard[slot];
         cardToSlot[card] = null;
         slotToCard[slot] = null;
-        tokensInSlots[slot] = -1;
 
         env.ui.removeCard(slot);
         env.ui.removeTokens(slot);
@@ -143,11 +127,6 @@ public class Table implements TableContract{
     public void placeToken(int player, int slot) {
         // TODO implement
 
-        //if slot doesn't already have a token, place one.
-        if(checkSlotFree(slot)){  
-            tokensInSlots[slot] = player;
-        }
-
         env.ui.placeToken(player, slot);
     }
 
@@ -160,24 +139,8 @@ public class Table implements TableContract{
     public boolean removeToken(int player, int slot) {
         // TODO implement
 
-        if(tokensInSlots[slot] == player){
-            tokensInSlots[slot] = -1;
-            return true;
-        }
-
         env.ui.removeToken(player, slot);
-
-        return false;
-    }
-
-
-    /**
-     * Checks if a slot if free for token placement, or has a token already.
-     * @param slot - the slot to check if it is free to place a token.
-     * @return     - true if slot has no token on it.
-     */
-    public boolean checkSlotFree(int slot){
-        return tokensInSlots[slot] == -1;
+        return true;
     }
 
 
