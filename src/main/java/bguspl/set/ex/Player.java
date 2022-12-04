@@ -54,11 +54,12 @@ public class Player implements Runnable, PlayerContract {
      */
     private int score;
 
-
     // Quoue for key actions.
-    private Queue<Integer> chosenSlots;
+    public Queue<Integer> chosenSlots;
 
     private Dealer dealer;
+
+    private boolean keyContinue;
 
     
     /**
@@ -76,6 +77,7 @@ public class Player implements Runnable, PlayerContract {
         this.id = id;
         this.human = human;
         this.dealer = dealer;
+        this.keyContinue = true;
         chosenSlots = new LinkedList<Integer>();
     }
 
@@ -93,24 +95,26 @@ public class Player implements Runnable, PlayerContract {
 
             //if third token placed
             // if yes - wait for point or penalty
-            if(chosenSlots.size() == 3){
-                
-                int[] setAsArray = chosenSlots.stream().mapToInt(Integer::intValue).toArray();
+            synchronized(dealer.handleSetLock){
+                if(chosenSlots.size() == 3){
+                    
+                    int[] setAsArray = chosenSlots.stream().mapToInt(Integer::intValue).toArray();
 
-                dealer.submitSet(id, setAsArray);
+                    dealer.submitSet(id, setAsArray);
 
-                synchronized(dealer.dealerInteruptLock){
-                    if(dealer.isSleeping()){
+                    synchronized(dealer.waitBeforeInterruptPlayer){
                         //awaken the dealer 
                         dealer.interruptDealer();
-                    }
-                }
-                
-                
 
-                // wait()
-                //wait for point/penalty from dealer
-                //
+                        try{
+                            //waits for dealer to send notify, which would happen when they finish checking the set we submitted.
+                            wait();
+                        } catch(InterruptedException ex){}
+                    }
+                    
+                }
+
+                keyContinue = true;
             }
 
             
@@ -156,10 +160,11 @@ public class Player implements Runnable, PlayerContract {
      */
     public void keyPressed(int slot) {
         // TODO implement
-
+        // if(player thread waiting do nothing)
+         //   return;
         //so player won't be able to remove or add more slots after making a set.
-        if(chosenSlots.size() < 3){
-        
+        if(keyContinue){
+            
             // if slot already in quoue remove it else add it
             if(chosenSlots.contains(slot)){
                 //remove from the list.
@@ -168,10 +173,18 @@ public class Player implements Runnable, PlayerContract {
                 table.removeToken(id, slot);
             }
             else{
-                //add to the list.
-                chosenSlots.add(slot);
-                //add token to table.
-                table.placeToken(id, slot);
+                if(chosenSlots.size() < 3){
+                    //add to the list.
+                    chosenSlots.add(slot);
+                    //add token to table.
+                    table.placeToken(id, slot);
+                    
+                    // when we picke 3 cards we will change keyContinue to false in order to block incming acion until the dealer test the set
+                    if(chosenSlots.size() == 3){
+                        keyContinue = false;
+                    }
+                }
+                
             }
         }
     }
@@ -185,8 +198,11 @@ public class Player implements Runnable, PlayerContract {
     public void point() {
         // TODO implement
 
-        int ignored = table.countCards(); // this part is just for demonstration in the unit tests
         env.ui.setScore(id, ++score);
+
+        Long secs = env.config.pointFreezeMillis/1000;
+        //display point freeze time
+        env.ui.setFreeze(id, secs.intValue());
 
         //make player wait
         try{
@@ -201,19 +217,21 @@ public class Player implements Runnable, PlayerContract {
     public void penalty() {
         // TODO implement
 
+        Long secs = env.config.penaltyFreezeMillis/1000;
+        //display penalty freeze time
+        env.ui.setFreeze(id, secs.intValue());
+
         //make player wait
         try{
             Thread.sleep(env.config.penaltyFreezeMillis);
-        } catch(InterruptedException ignored3){}    }
+        } catch(InterruptedException ignored3){}
+    }
 
     public int getScore() {
         return score;
     }
-
-    public Thread getThread(Object asker){
-        if(asker instanceof Dealer){
-            return playerThread;
-        }
-        return null;
+    public Thread getThread(){
+        return playerThread;
     }
+
 }

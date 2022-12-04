@@ -2,6 +2,7 @@ package bguspl.set.ex;
 
 import bguspl.set.Env;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
@@ -40,15 +41,22 @@ public class Dealer implements Runnable {
     private long countdownUntil;
 
     // submitted sets by players to dealer + first index is player's id.
-    private Queue<int[]> sets;
+    private int[] checkSet;
 
     private Thread dealerThread;
+
+    public Object handleSetLock;
+
+    // makes sure the player thread waits before we interrupt the dealer thread (in order to make sure player thread is waiting before dealer thread notifies them.)
+    public Object waitBeforeInterruptPlayer;
 
     public Dealer(Env env, Table table, Player[] players) {
         this.env = env;
         this.table = table;
         this.players = players;
         deck = IntStream.range(0, env.config.deckSize).boxed().collect(Collectors.toList());
+        this.handleSetLock = new Object();
+        this.waitBeforeInterruptPlayer = new Object();
     }
 
     /**
@@ -58,11 +66,22 @@ public class Dealer implements Runnable {
     public void run() {
         dealerThread = Thread.currentThread();
         System.out.printf("Info: Thread %s starting.%n", Thread.currentThread().getName());
+        
+
+
+        for (Player p : players) {
+            Thread playerThread = new Thread(p, "Player " + p.id);
+            playerThread.start();
+        }
+
         while (!shouldFinish()) {
             Collections.shuffle(deck);
             placeCardsOnTable();
             countdownLoop();
             removeAllCardsFromTable();
+        }
+        for (Player p : players) {
+            try{p.getThread().join();} catch(InterruptedException ex){}
         }
         announceWinners();
         System.out.printf("Info: Thread %s terminated.%n", Thread.currentThread().getName());
@@ -88,6 +107,10 @@ public class Dealer implements Runnable {
         // TODO implement
 
         // set terminate to true
+        for(Player p : players){
+            p.terminate();
+        }
+        
         terminate = true;
 
     }
@@ -106,16 +129,17 @@ public class Dealer implements Runnable {
     private void removeCardsFromTable() {
         // TODO implement
 
-        // remove a set from the table.
-        int[] setAndId = sets.remove();
+        // remove a set from the table.        
         
-        
-        while(!sets.isEmpty()){
-            // checking if legal and also rewarding or penalizing.
-            if(handleSet(setAndId)){
-                // remove cards and tokens from table
-                for (int c = 1; c < setAndId.length; c++) {
-                    table.removeCard(setAndId[c]);
+        // checking if legal and also rewarding or penalizing.
+        if(handleSet(checkSet)){
+            // remove cards and tokens from table
+            for (int c = 1; c < checkSet.length; c++) {
+                table.removeCard(checkSet[c]);
+                for(Player p : players){
+                    if(p.chosenSlots.contains(checkSet[c])){
+                        p.chosenSlots.remove(checkSet[c]);
+                    }
                 }
             }
         }
@@ -155,6 +179,10 @@ public class Dealer implements Runnable {
      */
     private void updateCountdown() {
         // TODO implement
+
+        Long secs = countdownUntil/1000;
+
+        env.ui.setCountdown(secs.intValue(), false);
     }
 
     /**
@@ -183,7 +211,22 @@ public class Dealer implements Runnable {
      * Check who is/are the winner/s and displays them.
      */
     private void announceWinners() {
+
         // TODO implement
+        List<Integer> winners = new ArrayList<>();
+        int maxScore = 0, tmpScore = 0;
+        for(Player player : players ){
+            tmpScore = player.getScore();
+            if(maxScore < tmpScore){
+                maxScore = tmpScore;
+            }
+       }
+       for(Player player : players ){
+            if(player.getScore() == maxScore){
+                winners.add(player.id);
+            }
+        }
+        env.ui.announceWinner(winners.stream().mapToInt(Integer::intValue).toArray());
     }
 
     /**
@@ -194,7 +237,6 @@ public class Dealer implements Runnable {
 
         int playerId = setAndId[0];
         int[] set = new int[setAndId.length-1];
-        Thread playerThread = players[playerId].getThread(this);
 
 
         for(int c = 1; c < set.length; c++){
@@ -213,13 +255,15 @@ public class Dealer implements Runnable {
 
         }
 
-        while(playerThread.getState() != Thread.State.WAITING){}
-        notify();
+        players[playerId].notify();
         return legal;
     }
 
     public void interruptDealer(){
-        dealerThread.interrupt();
+        synchronized(waitBeforeInterruptPlayer){
+            dealerThread.interrupt();
+        }
+        
     }
 
     public void submitSet(int id, int[] set){
@@ -233,10 +277,6 @@ public class Dealer implements Runnable {
             setAndId[c] = set[c-1];
         }
 
-        sets.add(setAndId);
-    }
-    
-    public boolean isSleeping(){
-        return dealerThread.getState() == Thread.State.TIMED_WAITING;
+        checkSet = setAndId;
     }
 }
