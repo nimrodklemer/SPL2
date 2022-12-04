@@ -47,8 +47,6 @@ public class Dealer implements Runnable {
 
     public Object handleSetLock;
 
-    // makes sure the player thread waits before we interrupt the dealer thread (in order to make sure player thread is waiting before dealer thread notifies them.)
-    public Object waitBeforeInterruptPlayer;
 
     public Dealer(Env env, Table table, Player[] players) {
         this.env = env;
@@ -56,7 +54,7 @@ public class Dealer implements Runnable {
         this.players = players;
         deck = IntStream.range(0, env.config.deckSize).boxed().collect(Collectors.toList());
         this.handleSetLock = new Object();
-        this.waitBeforeInterruptPlayer = new Object();
+        this.checkSet = null;
     }
 
     /**
@@ -71,12 +69,23 @@ public class Dealer implements Runnable {
 
         for (Player p : players) {
             Thread playerThread = new Thread(p, "Player " + p.id);
+            System.out.println("FAIL 07");
             playerThread.start();
+            System.out.println("FAIL 08");
         }
 
         while (!shouldFinish()) {
             Collections.shuffle(deck);
+
+            for (Player p : players) {
+                p.keyContinue = false;
+            }
+
             placeCardsOnTable();
+
+            for (Player p : players) {
+                p.keyContinue = true;
+            }
             countdownLoop();
             removeAllCardsFromTable();
         }
@@ -95,8 +104,10 @@ public class Dealer implements Runnable {
         while (!terminate && System.currentTimeMillis() < countdownUntil) {
             updateCountdown();
             sleepUntilWokenOrTimeout();
-            removeCardsFromTable();
-            placeCardsOnTable();
+            if(checkSet != null){
+                removeCardsFromTable();
+                placeCardsOnTable();
+            }
         }
     }
 
@@ -106,11 +117,12 @@ public class Dealer implements Runnable {
     public void terminate() {
         // TODO implement
 
-        // set terminate to true
+        // call players terminate
         for(Player p : players){
             p.terminate();
         }
-        
+        // set terminate to true
+
         terminate = true;
 
     }
@@ -132,6 +144,7 @@ public class Dealer implements Runnable {
         // remove a set from the table.        
         
         // checking if legal and also rewarding or penalizing.
+
         if(handleSet(checkSet)){
             // remove cards and tokens from table
             for (int c = 1; c < checkSet.length; c++) {
@@ -141,7 +154,9 @@ public class Dealer implements Runnable {
                         p.chosenSlots.remove(checkSet[c]);
                     }
                 }
-            }
+            }   
+            //resets time because set is found
+            resetCountdown();
         }
     }
 
@@ -169,9 +184,11 @@ public class Dealer implements Runnable {
         // TODO implement
 
         //wait for sleep countdown or for player to send a set.
-        try {
-            Thread.sleep(env.config.turnTimeoutMillis);
-        } catch (InterruptedException ignored) {}
+
+        while(!dealerThread.isInterrupted() && System.currentTimeMillis() < countdownUntil){
+            updateCountdown();
+        }
+
     }
 
     /**
@@ -179,9 +196,7 @@ public class Dealer implements Runnable {
      */
     private void updateCountdown() {
         // TODO implement
-
-        Long secs = countdownUntil/1000;
-
+        Long secs = (countdownUntil-System.currentTimeMillis());
         env.ui.setCountdown(secs.intValue(), false);
     }
 
@@ -242,6 +257,8 @@ public class Dealer implements Runnable {
         for(int c = 1; c < set.length; c++){
             set[c-1] = setAndId[c];
         }
+        //reset setAndId
+        setAndId = null;
 
         boolean legal = env.util.testSet(set);
         
@@ -254,14 +271,21 @@ public class Dealer implements Runnable {
             players[playerId].penalty();
 
         }
+        System.out.println("FAIL 20");
+        synchronized(players[playerId]){
+            players[playerId].notify();
+        }
+        
+        System.out.println("FAIL 21");
 
-        players[playerId].notify();
         return legal;
     }
 
-    public void interruptDealer(){
-        synchronized(waitBeforeInterruptPlayer){
+    public void interruptDealer(int playerId){
+        synchronized(players[playerId].waitBeforeInterruptPlayer){
+            System.out.println("FAIL 05");
             dealerThread.interrupt();
+            System.out.println("FAIL 06");
         }
         
     }

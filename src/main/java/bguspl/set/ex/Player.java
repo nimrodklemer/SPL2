@@ -1,5 +1,6 @@
 package bguspl.set.ex;
 
+import java.io.Console;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Stack;
@@ -59,7 +60,10 @@ public class Player implements Runnable, PlayerContract {
 
     private Dealer dealer;
 
-    private boolean keyContinue;
+    public boolean keyContinue;
+
+    // makes sure the player thread waits before we interrupt the dealer thread (in order to make sure player thread is waiting before dealer thread notifies them.)
+    public Object waitBeforeInterruptPlayer;
 
     
     /**
@@ -79,6 +83,7 @@ public class Player implements Runnable, PlayerContract {
         this.dealer = dealer;
         this.keyContinue = true;
         chosenSlots = new LinkedList<Integer>();
+        waitBeforeInterruptPlayer = new Object();
     }
 
     /**
@@ -99,16 +104,21 @@ public class Player implements Runnable, PlayerContract {
                 if(chosenSlots.size() == 3){
                     
                     int[] setAsArray = chosenSlots.stream().mapToInt(Integer::intValue).toArray();
-
+                    //we submit the set we want to check to dealer
                     dealer.submitSet(id, setAsArray);
 
-                    synchronized(dealer.waitBeforeInterruptPlayer){
+                    synchronized(waitBeforeInterruptPlayer){
                         //awaken the dealer 
-                        dealer.interruptDealer();
+                        dealer.interruptDealer(id);
 
                         try{
                             //waits for dealer to send notify, which would happen when they finish checking the set we submitted.
-                            wait();
+                            System.out.println("FAIL 01");
+                            synchronized(this){
+                                this.wait();
+                            }
+                            
+                            System.out.println("FAIL 02");
                         } catch(InterruptedException ex){}
                     }
                     
@@ -134,6 +144,8 @@ public class Player implements Runnable, PlayerContract {
             System.out.printf("Info: Thread %s starting.%n", Thread.currentThread().getName());
             while (!terminate) {
                 // TODO implement player key press simulator
+
+                
                 try {
                     synchronized (this) { wait(); }
                 } catch (InterruptedException ignored) {}
@@ -206,7 +218,9 @@ public class Player implements Runnable, PlayerContract {
 
         //make player wait
         try{
+            System.out.println("FAIL 09");
             Thread.sleep(env.config.pointFreezeMillis);
+            System.out.println("FAIL 10");
         } catch(InterruptedException ignored2){}
         
     }
@@ -223,7 +237,12 @@ public class Player implements Runnable, PlayerContract {
 
         //make player wait
         try{
+            System.out.println("FAIL 11");
+            long time = System.currentTimeMillis();
             Thread.sleep(env.config.penaltyFreezeMillis);
+
+            
+            System.out.println("FAIL 12");
         } catch(InterruptedException ignored3){}
     }
 

@@ -148,10 +148,10 @@ public class Table implements TableContract{
 
         List<Integer> newList = new LinkedList<Integer>();
 
-        int len = cardToSlot.length;
+        int len = slotToCard.length;
 
         for(int c = 0; c < len; c++){
-            if(cardToSlot[c] == null){
+            if(slotToCard[c] == null){
                 newList.add(c);
             }
         }
