@@ -65,6 +65,7 @@ public class Player implements Runnable, PlayerContract {
     // makes sure the player thread waits before we interrupt the dealer thread (in order to make sure player thread is waiting before dealer thread notifies them.)
     public Object waitBeforeInterruptPlayer;
 
+    private Queue<Integer> queue;
     
     /**
      * The class constructor.
@@ -84,6 +85,7 @@ public class Player implements Runnable, PlayerContract {
         this.keyContinue = true;
         chosenSlots = new LinkedList<Integer>();
         waitBeforeInterruptPlayer = new Object();
+        queue = new LinkedList<Integer>(3);
     }
 
     /**
@@ -98,32 +100,72 @@ public class Player implements Runnable, PlayerContract {
         while (!terminate) {
             // TODO implement main player loop
 
+            // if slot already in quoue remove it else add it
+            int slot =queue.poll();
+            if(chosenSlots.contains(slot)){
+                //remove from the list.
+                chosenSlots.remove(slot);
+                //remove token from table.
+                table.removeToken(id, slot);
+            }
+            else{
+                if(chosenSlots.size() < 3){
+                    //add to the list.
+                    chosenSlots.add(slot);
+                    //add token to table.
+                    table.placeToken(id, slot);
+                    
+                    // when we picke 3 cards we will change keyContinue to false in order to block incming acion until the dealer test the set
+                    if(chosenSlots.size() == 3){
+                        keyContinue = false;
+                    }
+                }
+                
+            }
+
             //if third token placed
             // if yes - wait for point or penalty
-            synchronized(dealer.handleSetLock){
-                if(chosenSlots.size() == 3){
-                    
-                    int[] setAsArray = chosenSlots.stream().mapToInt(Integer::intValue).toArray();
-                    //we submit the set we want to check to dealer
-                    dealer.submitSet(id, setAsArray);
+            if(chosenSlots.size() == 3){
+                synchronized(dealer.handleSetLock){
+                    if(chosenSlots.size() == 3){
+                        
+                        int[] setAsArray = chosenSlots.stream().mapToInt(Integer::intValue).toArray();
+                        //we submit the set we want to check to dealer
+                        dealer.submitSet(id, setAsArray);
 
-                    synchronized(waitBeforeInterruptPlayer){
-                        //awaken the dealer 
-                        dealer.interruptDealer(id);
+                        synchronized(waitBeforeInterruptPlayer){
+                            //awaken the dealer 
+                            dealer.interruptDealer(id);
 
-                        try{
-                            //waits for dealer to send notify, which would happen when they finish checking the set we submitted.
-                            System.out.println("FAIL 01");
-                            synchronized(this){
-                                this.wait();
-                            }
+                            try{
+                                //waits for dealer to send notify, which would happen when they finish checking the set we submitted.
+                                System.out.println("FAIL 01");
+                                waitBeforeInterruptPlayer.wait();
+                                
                             
-                            System.out.println("FAIL 02");
-                        } catch(InterruptedException ex){}
+                                System.out.println("FAIL 02");
+                            } catch(InterruptedException ex){}
+                        }   
                     }
                     
                 }
-
+                if(penalty){
+                    for(int i=3; i>0; i++){
+                        env.ui.setFreeze(id, i);
+                        Thread.sleep(1000);//sec
+                        
+                    }
+                    penalty = false;
+                }
+                else if(point){
+                    for(int i=1; i>0; i++){
+                        env.ui.setFreeze(id, i);
+                        Thread.sleep(1000);//sec
+                        
+                    }
+                    point = false;
+                }
+                env.ui.setFreeze(id, 0);
                 keyContinue = true;
             }
 
@@ -176,28 +218,7 @@ public class Player implements Runnable, PlayerContract {
          //   return;
         //so player won't be able to remove or add more slots after making a set.
         if(keyContinue){
-            
-            // if slot already in quoue remove it else add it
-            if(chosenSlots.contains(slot)){
-                //remove from the list.
-                chosenSlots.remove(slot);
-                //remove token from table.
-                table.removeToken(id, slot);
-            }
-            else{
-                if(chosenSlots.size() < 3){
-                    //add to the list.
-                    chosenSlots.add(slot);
-                    //add token to table.
-                    table.placeToken(id, slot);
-                    
-                    // when we picke 3 cards we will change keyContinue to false in order to block incming acion until the dealer test the set
-                    if(chosenSlots.size() == 3){
-                        keyContinue = false;
-                    }
-                }
-                
-            }
+            queue.offer(slot); 
         }
     }
 

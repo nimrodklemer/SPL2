@@ -2,6 +2,7 @@ package bguspl.set.ex;
 
 import bguspl.set.Env;
 
+import java.io.Console;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -272,15 +273,14 @@ public class Dealer implements Runnable {
 
         }
         System.out.println("FAIL 20");
-        synchronized(players[playerId]){
-            players[playerId].notify();
-        }
+        players[playerId].waitBeforeInterruptPlayer.notify();
+        
         
         System.out.println("FAIL 21");
 
         return legal;
     }
-
+    
     public void interruptDealer(int playerId){
         synchronized(players[playerId].waitBeforeInterruptPlayer){
             System.out.println("FAIL 05");
